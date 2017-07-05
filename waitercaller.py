@@ -7,7 +7,11 @@ from flask_login import (LoginManager, current_user, login_required,
 import config
 from bitlyhelper import BitlyHelper
 from forms import CreateTableForm, LoginForm, RegistrationForm
-from mockdbhelper import MockDBHelper as DBHelper
+if config.test:
+    from mockdbhelper import MockDBHelper as DBHelper
+else:
+    from dbhelper import DBHelper
+
 from passwordhelper import PasswordHelper
 from user import User
 
@@ -105,7 +109,7 @@ def account_createtable():
     if form.validate():
         tablename = form.tablenumber.data
         tableid = DB.add_table(tablename, current_user.get_id())
-        new_url = BH.shorten_url(config.base_url + "newrequest/" + tableid)
+        new_url = BH.shorten_url(config.base_url + "newrequest/" + str(tableid))
         DB.update_table(tableid, new_url)
         return redirect(url_for("account"))
     return render_template("account.html",createtableform=form,tables=DB.get_tables(current_user.get_id()))
@@ -121,8 +125,10 @@ def account_deletetable():
 
 @app.route("/newrequest/<tid>")
 def new_request(tid):
-    DB.add_request(tid, datetime.datetime.now())
-    return "Your request has been logged and a waiter will be with you shortly"
+    if DB.add_request(tid, datetime.datetime.now()):
+        return "Your request has been logged and a waiter will be with you shortly"
+    return "There is already a request pending for this table. Please be patient, a waiter will be there ASAP"
+
 
 
 if __name__ == "__main__":
